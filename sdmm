@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart-DMM Suite | Multi-Range IoT Telemetry & Operator Suite</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .lcd-screen { background-color: #064e3b; color: #34d399; font-family: 'Courier New', Courier, monospace; text-shadow: 0 0 8px rgba(52, 211, 153, 0.4); }
+        .dmm-body { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 3px solid #334155; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+    <!-- ================= AUTHENTICATION VIEW ================= -->
+    <div id="auth-container" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950 bg-opacity-95 p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-md w-full shadow-2xl relative">
+            
+            <div class="text-center mb-6">
+                <div class="bg-blue-600 text-white w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg shadow-blue-500/30 text-2xl">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white tracking-wide">Smart-DMM Portal</h1>
+                <p class="text-slate-400 text-sm mt-1">Multi-Range IoT Telemetry & Operator Suite</p>
+            </div>
+
+            <!-- Tab Switcher -->
+            <div id="auth-tabs" class="flex bg-slate-800 p-1 rounded-xl mb-6">
+                <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white transition">Login</button>
+                <button id="tab-signup" onclick="switchAuthTab('signup')" class="flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition">Sign Up</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="form-login" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Username</label>
+                    <input type="text" id="login-user" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="e.g., admin">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Password</label>
+                    <input type="password" id="login-pass" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <div class="flex justify-between items-center text-xs">
+                    <span class="text-slate-400"></span>
+                    <button type="button" onclick="switchAuthTab('forgot')" class="text-blue-400 hover:underline">Forgot Password?</button>
+                </div>
+                <p id="login-error" class="text-red-400 text-xs hidden"></p>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-blue-600/30 transition">Access Web Portal</button>
+            </form>
+
+            <!-- Sign Up Form -->
+            <form id="form-signup" onsubmit="handleSignup(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Choose Username</label>
+                    <input type="text" id="signup-user" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="e.g., electrical_eng">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Mobile Number (For Recovery)</label>
+                    <input type="tel" id="signup-phone" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="e.g., 09123456789">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Create Password</label>
+                    <input type="password" id="signup-pass" required class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <p id="signup-success" class="text-emerald-400 text-xs hidden"></p>
+                <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-600/30 transition">Register Account</button>
+            </form>
+
+            <!-- Forgot Password Form (Step 1) -->
+            <div id="form-forgot-step1" class="space-y-4 hidden">
+                <p class="text-xs text-slate-300">Enter your registered mobile number to receive a 6-digit verification code.</p>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Mobile Number</label>
+                    <input type="tel" id="forgot-phone" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="e.g., 09123456789">
+                </div>
+                <p id="forgot-error-1" class="text-red-400 text-xs hidden"></p>
+                <button onclick="requestResetCode()" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-amber-600/20 transition">Send SMS Code</button>
+                <button onclick="switchAuthTab('login')" class="w-full bg-transparent hover:bg-slate-800 text-slate-400 font-semibold py-2 rounded-lg text-xs transition">Back to Login</button>
+            </div>
+
+            <!-- Forgot Password Form (Step 2) -->
+            <div id="form-forgot-step2" class="space-y-4 hidden">
+                <div id="sms-simulation-banner" class="bg-blue-950 border border-blue-800 p-3 rounded-lg text-xs text-blue-300 font-mono"></div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">Enter 6-Digit Code</label>
+                    <input type="text" id="entered-code" maxlength="6" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white tracking-widest text-center text-lg font-mono focus:outline-none focus:border-blue-500" placeholder="123456">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-400 uppercase mb-1">New Password</label>
+                    <input type="password" id="new-password" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <p id="forgot-error-2" class="text-red-400 text-xs hidden"></p>
+                <button onclick="verifyAndResetPassword()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-lg shadow-lg shadow-emerald-600/20 transition">Reset Password</button>
+                <button onclick="switchAuthTab('login')" class="w-full bg-transparent hover:bg-slate-800 text-slate-400 font-semibold py-2 rounded-lg text-xs transition">Cancel</button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ================= OPERATOR MANAGEMENT VIEW ================= -->
+    <div id="operator-container" class="hidden flex-1 flex flex-col">
+        <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <div class="bg-purple-600 text-white p-2.5 rounded-xl shadow-md shadow-purple-500/20">
+                    <i class="fa-solid fa-user-shield text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Operator Mode — User Management</h1>
+                    <p class="text-xs text-slate-400">Authorized Personnel: <span class="text-purple-400 font-mono">admin012</span></p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                <i class="fa-solid fa-right-from-bracket mr-1.5"></i> Logout Operator
+            </button>
+        </header>
+
+        <main class="flex-1 max-w-5xl w-full mx-auto p-6 space-y-6">
+            <!-- View A: User Directory -->
+            <div id="operator-view-list" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+                        <i class="fa-solid fa-users text-purple-400 mr-2"></i>Registered System Users Database (Click Username to Inspect)
+                    </h2>
+                    <button onclick="loadUsersTable()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition">
+                        <i class="fa-solid fa-rotate mr-1 text-blue-400"></i> Refresh List
+                    </button>
+                </div>
+                <div class="overflow-x-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-800 text-slate-400 uppercase font-semibold">
+                            <tr>
+                                <th class="p-3">User ID</th>
+                                <th class="p-3">Username</th>
+                                <th class="p-3">Registered Mobile #</th>
+                                <th class="p-3">Account Type</th>
+                                <th class="p-3 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="operator-user-table" class="divide-y divide-slate-800 font-mono">
+                            <!-- Dynamic rows injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- View B: Individual User Profile & Telemetry Inspection -->
+            <div id="operator-view-profile" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                    <div>
+                        <button onclick="backToUserList()" class="text-xs text-blue-400 hover:underline mb-2 inline-block">
+                            <i class="fa-solid fa-arrow-left mr-1"></i> Back to User Directory
+                        </button>
+                        <h2 id="inspect-username-title" class="text-base font-bold text-white uppercase tracking-wider">User Profile: <span class="text-purple-400"></span></h2>
+                    </div>
+                    <button onclick="clearSpecificUserLogs()" class="bg-red-950 hover:bg-red-900 text-red-400 px-3 py-1.5 rounded-lg text-xs font-medium border border-red-800 transition">
+                        <i class="fa-solid fa-trash mr-1"></i> Wipe User Records
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 bg-slate-800/50 p-4 rounded-xl border border-slate-800 text-xs">
+                    <div><span class="text-slate-400">Registered Phone:</span> <span id="inspect-phone" class="font-mono text-white"></span></div>
+                    <div><span class="text-slate-400">Total Logged Sessions:</span> <span id="inspect-count" class="font-mono text-emerald-400">0</span></div>
+                </div>
+
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 pt-2"><i class="fa-solid fa-database text-purple-400 mr-2"></i>User Telemetry Logs</h3>
+                <div class="overflow-x-auto max-h-64 overflow-y-auto rounded-xl border border-slate-800">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead class="bg-slate-800 text-slate-400 uppercase font-semibold sticky top-0">
+                            <tr>
+                                <th class="p-3">Log ID</th>
+                                <th class="p-3">Timestamp</th>
+                                <th class="p-3">Range / Mode</th>
+                                <th class="p-3">Primary Meas.</th>
+                                <th class="p-3">Secondary Meas.</th>
+                                <th class="p-3">Resistance</th>
+                                <th class="p-3">Power</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inspect-logs-body" class="divide-y divide-slate-800 font-mono">
+                            <!-- Dynamic rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ================= STANDARD DASHBOARD VIEW ================= -->
+    <div id="dashboard-container" class="hidden flex-1 flex flex-col">
+        <!-- Top Navbar -->
+        <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex justify-between items-center shadow-md">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-600 text-white p-2.5 rounded-xl shadow-md shadow-blue-500/20">
+                    <i class="fa-solid fa-gauge-high text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight">Smart-DMM Telemetry Portal</h1>
+                    <p class="text-xs text-slate-400">Logged in as: <span id="nav-current-user" class="text-blue-400 font-mono">admin</span></p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="connection-badge" class="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center space-x-2 bg-emerald-950 text-emerald-400 border border-emerald-800">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span id="connection-text">NODE CONNECTED</span>
+                </div>
+                <button onclick="handleLogout()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700 transition">
+                    <i class="fa-solid fa-right-from-bracket mr-1.5"></i> Logout
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Grid -->
+        <main class="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Column 1: Virtual DMM Benchtop Simulator with Ranges -->
+            <section class="lg:col-span-1 dmm-body rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                <div>
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+                            <i class="fa-solid fa-microchip text-blue-400 mr-2"></i>Virtual Multi-Range Bench
+                        </h2>
+                        <span class="text-xs px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">ESP32 Core</span>
+                    </div>
+
+                    <!-- Simulated DMM LCD Screen -->
+                    <div class="lcd-screen rounded-xl p-4 mb-4 border-2 border-emerald-900 shadow-inner">
+                        <div class="flex justify-between text-xs opacity-80 mb-1">
+                            <span id="lcd-range-disp">RANGE: DCV 250V</span>
+                            <span id="lcd-wifi">Wi-Fi: OK</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 my-2 border-y border-emerald-900/50 py-2">
+                            <div>
+                                <div class="text-[10px] uppercase opacity-75">Measured Value</div>
+                                <div id="lcd-primary" class="text-xl font-bold truncate">12.00 V</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase opacity-75">Secondary Param</div>
+                                <div id="lcd-secondary" class="text-xl font-bold truncate">0.50 A</div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 pt-1 text-emerald-300">
+                            <div>
+                                <div class="text-[10px] uppercase opacity-75">Calc. Resistance</div>
+                                <div id="lcd-r" class="text-base font-bold">24.00 Ω</div>
+                            </div>
+                            <div>
+                                <div class="text-[10px] uppercase opacity-75">Calc. Power</div>
+                                <div id="lcd-p" class="text-base font-bold">6.00 W</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rotary Range Selector -->
+                    <div class="mb-4">
+                        <label class="block text-xs font-medium text-slate-400 uppercase mb-1.5">Function & Range Dial</label>
+                        <select id="dmm-range-select" onchange="updateVirtualCircuit()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-semibold text-blue-400 focus:outline-none focus:border-blue-500">
+                            <optgroup label="DC Voltage (V)">
+                                <option value="DC_10">DC 10V Range</option>
+                                <option value="DC_25">DC 25V Range</option>
+                                <option value="DC_100">DC 100V Range</option>
+                                <option value="DC_250" selected>DC 250V Range</option>
+                                <option value="DC_500">DC 500V Range</option>
+                            </optgroup>
+                            <optgroup label="AC Voltage (V RMS)">
+                                <option value="AC_20">AC 20V Range</option>
+                                <option value="AC_200">AC 200V Range</option>
+                                <option value="AC_600">AC 600V Range</option>
+                            </optgroup>
+                            <optgroup label="Resistance (Ohms)">
+                                <option value="OHM_200">200 Ω Range</option>
+                                <option value="OHM_2k">2k Ω (2,000 Ω) Range</option>
+                                <option value="OHM_20k">20k Ω Range</option>
+                                <option value="OHM_200k">200k Ω Range</option>
+                                <option value="OHM_2m">2M Ω Range</option>
+                                <option value="OHM_20m">20M Ω Range</option>
+                            </optgroup>
+                            <optgroup label="Current (Amps / mA)">
+                                <option value="AMP_20m">20mA Range</option>
+                                <option value="AMP_200m">200mA Range</option>
+                                <option value="AMP_10a">10A Range</option>
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <!-- Circuit Stimulus Sliders -->
+                    <div class="space-y-3 bg-slate-900/60 p-3.5 rounded-xl border border-slate-800 mb-4">
+                        <div>
+                            <div class="flex justify-between items-center text-xs mb-1">
+                                <span class="text-slate-400 font-medium">Test Stimulus Input:</span>
+                                <span id="val-input-disp" class="text-blue-400 font-mono font-bold">12.0</span>
+                            </div>
+                            <input type="range" id="slider-input" min="0.5" max="550" step="0.5" value="12" oninput="updateVirtualCircuit()" class="w-full accent-blue-500 cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tactile Pushbuttons -->
+                <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-800">
+                    <button onclick="pressEqualsButton()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-amber-600/20 transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-calculator"></i>
+                        <span>Hold / Equals</span>
+                    </button>
+                    <button onclick="pressImportButton()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 px-4 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/20 transition flex items-center justify-center space-x-1.5">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Import / Send</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Column 2: Telemetry Analytics & Live Logs -->
+            <section class="lg:col-span-2 space-y-6 flex flex-col">
+                
+                <!-- Chart Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+                            <i class="fa-solid fa-chart-line text-blue-400 mr-2"></i>Real-Time Telemetry Trend
+                        </h2>
+                        <span class="text-xs text-slate-400">Live WebSockets / HTTP Stream</span>
+                    </div>
+                    <div class="relative h-60 w-full">
+                        <canvas id="telemetryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Historical Logs Table Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-300">
+                            <i class="fa-solid fa-database text-blue-400 mr-2"></i>Historical Test Log Database
+                        </h2>
+                        <div class="flex space-x-2">
+                            <button onclick="exportToCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition">
+                                <i class="fa-solid fa-file-csv mr-1 text-emerald-400"></i> Export CSV
+                            </button>
+                            <button onclick="clearLogs()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-700 transition">
+                                <i class="fa-solid fa-trash mr-1 text-red-400"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto rounded-xl border border-slate-800">
+                        <table class="w-full text-left border-collapse text-xs">
+                            <thead class="bg-slate-800 text-slate-400 sticky top-0 uppercase font-semibold">
+                                <tr>
+                                    <th class="p-3">Log ID</th>
+                                    <th class="p-3">Timestamp</th>
+                                    <th class="p-3">Range / Mode</th>
+                                    <th class="p-3">Primary Meas.</th>
+                                    <th class="p-3">Secondary Meas.</th>
+                                    <th class="p-3">Resistance (R)</th>
+                                    <th class="p-3">Power (P)</th>
+                                    <th class="p-3 text-center">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="log-table-body" class="divide-y divide-slate-800 font-mono">
+                                <!-- Dynamic rows injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+        </main>
+
+        <footer class="bg-slate-900 border-t border-slate-800 py-4 text-center text-xs text-slate-500">
+            Smart-DMM Capstone Research Project &copy; 2026 | Multi-Range Automated Solver Engine
+        </footer>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        let generatedResetCode = "";
+        let currentlyInspectedUser = null;
+        let telemetryChartInstance = null;
+        let currentCalculatedData = { primary: "12.00 V", secondary: "0.50 A", resistance: "24.00 Ω", power: "6.00 W", mode: "DC 250V Range" };
+
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('form-login');
+            const signupForm = document.getElementById('form-signup');
+            const forgotStep1 = document.getElementById('form-forgot-step1');
+            const forgotStep2 = document.getElementById('form-forgot-step2');
+            const authTabs = document.getElementById('auth-tabs');
+
+            loginForm.classList.add('hidden');
+            signupForm.classList.add('hidden');
+            forgotStep1.classList.add('hidden');
+            forgotStep2.classList.add('hidden');
+            authTabs.classList.remove('hidden');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                document.getElementById('tab-login').className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-blue-600 text-white transition";
+                document.getElementById('tab-signup').className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition";
+            } else if (tab === 'signup') {
+                signupForm.classList.remove('hidden');
+                document.getElementById('tab-signup').className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-emerald-600 text-white transition";
+                document.getElementById('tab-login').className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition";
+            } else if (tab === 'forgot') {
+                authTabs.classList.add('hidden');
+                forgotStep1.classList.remove('hidden');
+            } else if (tab === 'forgot-step2') {
+                authTabs.classList.add('hidden');
+                forgotStep2.classList.remove('hidden');
+            }
+        }
+
+        function getUsersList() {
+            let users = JSON.parse(localStorage.getItem('dmm_users_db')) || [];
+            if (users.length === 0) {
+                users.push({ username: "admin", phone: "09123456789", type: "Standard" });
+            }
+            return users;
+        }
+
+        function handleSignup(e) {
+            e.preventDefault();
+            const user = document.getElementById('signup-user').value;
+            const phone = document.getElementById('signup-phone').value;
+            const pass = document.getElementById('signup-pass').value;
+            
+            let users = getUsersList();
+            if (users.some(u => u.username === user)) {
+                alert("Username already exists!");
+                return;
+            }
+
+            users.push({ username: user, phone: phone, type: "Standard" });
+            localStorage.setItem('dmm_users_db', JSON.stringify(users));
+            localStorage.setItem('dmm_pass_' + user, pass);
+
+            const successMsg = document.getElementById('signup-success');
+            successMsg.textContent = "Account created successfully! You can now log in.";
+            successMsg.classList.remove('hidden');
+            setTimeout(() => { switchAuthTab('login'); successMsg.classList.add('hidden'); }, 1500);
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const user = document.getElementById('login-user').value;
+            const pass = document.getElementById('login-pass').value;
+
+            if (user === "admin012" && pass === "buratburat") {
+                localStorage.setItem('dmm_session_type', 'operator');
+                localStorage.setItem('dmm_authenticated', 'true');
+                checkAuth();
+                return;
+            }
+
+            const storedPass = localStorage.getItem('dmm_pass_' + user) || (user === 'admin' ? 'password123' : null);
+
+            if (storedPass && pass === storedPass) {
+                localStorage.setItem('dmm_session_type', 'standard');
+                localStorage.setItem('dmm_authenticated', 'true');
+                localStorage.setItem('dmm_current_user', user);
+                document.getElementById('nav-current-user').textContent = user;
+                loadUserLogs(user);
+                checkAuth();
+            } else {
+                const err = document.getElementById('login-error');
+                err.textContent = "Invalid username or password!";
+                err.classList.remove('hidden');
+            }
+        }
+
+        function requestResetCode() {
+            const phoneInput = document.getElementById('forgot-phone').value;
+            let users = getUsersList();
+            const foundUser = users.find(u => u.phone === phoneInput);
+
+            if (foundUser || phoneInput === "09123456789") {
+                generatedResetCode = Math.floor(100000 + Math.random() * 900000).toString();
+                document.getElementById('sms-simulation-banner').innerHTML = 
+                    `<i class="fa-solid fa-comment-sms mr-1"></i> SMS Sent to ${phoneInput}: Your recovery code is <b class="text-emerald-400">${generatedResetCode}</b>`;
+                switchAuthTab('forgot-step2');
+            } else {
+                const err = document.getElementById('forgot-error-1');
+                err.textContent = "Mobile number not registered in the system!";
+                err.classList.remove('hidden');
+            }
+        }
+
+        function verifyAndResetPassword() {
+            const entered = document.getElementById('entered-code').value;
+            const newPass = document.getElementById('new-password').value;
+
+            if (entered === generatedResetCode && newPass.length >= 6) {
+                alert("Password successfully reset! Please log in.");
+                switchAuthTab('login');
+            } else {
+                const err = document.getElementById('forgot-error-2');
+                err.textContent = "Invalid verification code or password must be at least 6 characters.";
+                err.classList.remove('hidden');
+            }
+        }
+
+        function handleLogout() {
+            localStorage.removeItem('dmm_authenticated');
+            localStorage.removeItem('dmm_session_type');
+            localStorage.removeItem('dmm_current_user');
+            checkAuth();
+        }
+
+        function checkAuth() {
+            const auth = localStorage.getItem('dmm_authenticated');
+            const sessionType = localStorage.getItem('dmm_session_type');
+            const currentUser = localStorage.getItem('dmm_current_user') || 'admin';
+
+            const authContainer = document.getElementById('auth-container');
+            const operatorContainer = document.getElementById('operator-container');
+            const dashboardContainer = document.getElementById('dashboard-container');
+
+            if (auth === 'true') {
+                authContainer.classList.add('hidden');
+                if (sessionType === 'operator') {
+                    operatorContainer.classList.remove('hidden');
+                    dashboardContainer.classList.add('hidden');
+                    loadUsersTable();
+                } else {
+                    operatorContainer.classList.add('hidden');
+                    dashboardContainer.classList.remove('hidden');
+                    document.getElementById('nav-current-user').textContent = currentUser;
+                    loadUserLogs(currentUser);
+                    initChart();
+                    updateVirtualCircuit();
+                }
+            } else {
+                authContainer.classList.remove('hidden');
+                operatorContainer.classList.add('hidden');
+                dashboardContainer.classList.add('hidden');
+                switchAuthTab('login');
+            }
+        }
+
+        function updateVirtualCircuit() {
+            const rangeSelect = document.getElementById('dmm-range-select').value;
+            const stimulusVal = parseFloat(document.getElementById('slider-input').value);
+            document.getElementById('val-input-disp').textContent = stimulusVal.toFixed(1);
+
+            document.getElementById('lcd-range-disp').textContent = `RANGE: ${rangeSelect.replace('_', ' ')}`;
+
+            let primaryStr = "", secondaryStr = "", rStr = "", pStr = "";
+
+            if (rangeSelect.startsWith('DC')) {
+                primaryStr = stimulusVal.toFixed(2) + " V";
+                let current = (stimulusVal / 24).toFixed(2);
+                secondaryStr = current + " A";
+                let resistance = (stimulusVal / (parseFloat(current) || 0.01)).toFixed(2);
+                rStr = resistance + " Ω";
+                pStr = (stimulusVal * parseFloat(current)).toFixed(2) + " W";
+            } else if (rangeSelect.startsWith('AC')) {
+                primaryStr = stimulusVal.toFixed(2) + " V (RMS)";
+                secondaryStr = (stimulusVal / 50).toFixed(2) + " A";
+                rStr = "120.00 Ω";
+                pStr = (stimulusVal * (stimulusVal / 50)).toFixed(2) + " W";
+            } else if (rangeSelect.startsWith('OHM')) {
+                primaryStr = stimulusVal.toFixed(1) + " Ω";
+                secondaryStr = "0.00 mA";
+                rStr = stimulusVal.toFixed(1) + " Ω";
+                pStr = "0.00 W";
+            } else if (rangeSelect.startsWith('AMP')) {
+                primaryStr = stimulusVal.toFixed(2) + " mA";
+                secondaryStr = "5.00 V";
+                rStr = (5 / (stimulusVal / 1000)).toFixed(2) + " Ω";
+                pStr = (5 * (stimulusVal / 1000)).toFixed(3) + " W";
+            }
+
+            document.getElementById('lcd-primary').textContent = primaryStr;
+            document.getElementById('lcd-secondary').textContent = secondaryStr;
+            document.getElementById('lcd-r').textContent = rStr;
+            document.getElementById('lcd-p').textContent = pStr;
+
+            currentCalculatedData = {
+                primary: primaryStr,
+                secondary: secondaryStr,
+                resistance: rStr,
+                power: pStr,
+                mode: rangeSelect
+            };
+        }
+
+        function pressEqualsButton() {
+            alert("Reading held on screen & captured for review.");
+        }
+
+        function pressImportButton() {
+            const currentUser = localStorage.getItem('dmm_current_user') || 'admin';
+            let logsKey = 'dmm_logs_' + currentUser;
+            let logs = JSON.parse(localStorage.getItem(logsKey)) || [];
+
+            const newLog = {
+                id: "LOG-" + Math.floor(1000 + Math.random() * 9000),
+                timestamp: new Date().toLocaleTimeString(),
+                mode: currentCalculatedData.mode,
+                primary: currentCalculatedData.primary,
+                secondary: currentCalculatedData.secondary,
+                resistance: currentCalculatedData.resistance,
+                power: currentCalculatedData.power,
+                status: "Synced"
+            };
+
+            logs.unshift(newLog);
+            localStorage.setItem(logsKey, JSON.stringify(logs));
+            loadUserLogs(currentUser);
+            updateChartWithNewData(parseFloat(currentCalculatedData.primary));
+        }
+
+        function loadUserLogs(username) {
+            let logsKey = 'dmm_logs_' + username;
+            let logs = JSON.parse(localStorage.getItem(logsKey)) || [];
+            const tbody = document.getElementById('log-table-body');
+            tbody.innerHTML = "";
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-500">No recorded telemetry logs found.</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="p-3 text-blue-400">${log.id}</td>
+                        <td class="p-3 text-slate-400">${log.timestamp}</td>
+                        <td class="p-3">${log.mode}</td>
+                        <td class="p-3 text-emerald-400">${log.primary}</td>
+                        <td class="p-3">${log.secondary}</td>
+                        <td class="p-3">${log.resistance}</td>
+                        <td class="p-3">${log.power}</td>
+                        <td class="p-3 text-center"><span class="px-2 py-0.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded text-[10px]">${log.status}</span></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function clearLogs() {
+            const currentUser = localStorage.getItem('dmm_current_user') || 'admin';
+            localStorage.removeItem('dmm_logs_' + currentUser);
+            loadUserLogs(currentUser);
+        }
+
+        function exportToCSV() {
+            const currentUser = localStorage.getItem('dmm_current_user') || 'admin';
+            let logs = JSON.parse(localStorage.getItem('dmm_logs_' + currentUser)) || [];
+            if (logs.length === 0) { alert("No logs to export!"); return; }
+
+            let csv = "Log ID,Timestamp,Mode,Primary,Secondary,Resistance,Power\n";
+            logs.forEach(l => {
+                csv += `${l.id},${l.timestamp},${l.mode},${l.primary},${l.secondary},${l.resistance},${l.power}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `smart_dmm_telemetry_${currentUser}.csv`);
+            a.click();
+        }
+
+        function loadUsersTable() {
+            let users = getUsersList();
+            const tbody = document.getElementById('operator-user-table');
+            tbody.innerHTML = "";
+
+            users.forEach((u, idx) => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/50 cursor-pointer" onclick="inspectUser('${u.username}')">
+                        <td class="p-3 text-purple-400">USR-${100 + idx}</td>
+                        <td class="p-3 text-white font-bold hover:underline">${u.username}</td>
+                        <td class="p-3 text-slate-300">${u.phone}</td>
+                        <td class="p-3 text-emerald-400">${u.type}</td>
+                        <td class="p-3 text-center">
+                            <button onclick="event.stopPropagation(); inspectUser('${u.username}')" class="bg-blue-950 hover:bg-blue-900 text-blue-400 px-2 py-1 rounded text-[10px] border border-blue-800">Inspect</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function inspectUser(username) {
+            currentlyInspectedUser = username;
+            let users = getUsersList();
+            let user = users.find(u => u.username === username);
+            let logs = JSON.parse(localStorage.getItem('dmm_logs_' + username)) || [];
+
+            document.getElementById('operator-view-list').classList.add('hidden');
+            document.getElementById('operator-view-profile').classList.remove('hidden');
+            document.getElementById('inspect-username-title').querySelector('span').textContent = username;
+            document.getElementById('inspect-phone').textContent = user ? user.phone : 'N/A';
+            document.getElementById('inspect-count').textContent = logs.length;
+
+            const tbody = document.getElementById('inspect-logs-body');
+            tbody.innerHTML = "";
+
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-500">No logs found for this user.</td></tr>`;
+                return;
+            }
+
+            logs.forEach(l => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="p-3 text-blue-400">${l.id}</td>
+                        <td class="p-3 text-slate-400">${l.timestamp}</td>
+                        <td class="p-3">${l.mode}</td>
+                        <td class="p-3 text-emerald-400">${l.primary}</td>
+                        <td class="p-3">${l.secondary}</td>
+                        <td class="p-3">${l.resistance}</td>
+                        <td class="p-3">${l.power}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function backToUserList() {
+            document.getElementById('operator-view-profile').classList.add('hidden');
+            document.getElementById('operator-view-list').classList.remove('hidden');
+            currentlyInspectedUser = null;
+        }
+
+        function clearSpecificUserLogs() {
+            if (currentlyInspectedUser && confirm(`Are you sure you want to wipe records for ${currentlyInspectedUser}?`)) {
+                localStorage.removeItem('dmm_logs_' + currentlyInspectedUser);
+                inspectUser(currentlyInspectedUser);
+            }
+        }
+
+        function initChart() {
+            const ctx = document.getElementById('telemetryChart').getContext('2d');
+            if (telemetryChartInstance) telemetryChartInstance.destroy();
+
+            telemetryChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: ['10s ago', '8s ago', '6s ago', '4s ago', '2s ago', 'Now'],
+                    datasets: [{
+                        label: 'Primary Measurement Value',
+                        data: [10.2, 11.5, 11.8, 12.0, 12.1, 12.0],
+                        borderColor: '#34d399',
+                        backgroundColor: 'rgba(52, 211, 153, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
+                        y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } }
+                    }
+                }
+            });
+        }
+
+        function updateChartWithNewData(val) {
+            if (!telemetryChartInstance) return;
+            let labels = telemetryChartInstance.data.labels;
+            let data = telemetryChartInstance.data.datasets[0].data;
+
+            labels.shift();
+            labels.push(new Date().toLocaleTimeString());
+            data.shift();
+            data.push(val);
+
+            telemetryChartInstance.update();
+        }
+
+        // Initialize application state on page load
+        window.onload = function() {
+            checkAuth();
+        };
+    </script>
+</body>
+</html>
